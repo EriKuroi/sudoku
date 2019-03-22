@@ -1,10 +1,7 @@
 //import { it } from "mocha";
 
 module.exports = function solveSudoku(matrix) {
-  // your solution
-
-  //let i, j;
-  const matrixOrigin = JSON.parse(JSON.stringify(matrix));  
+  const matrixOrigin = JSON.parse(JSON.stringify(matrix));
   let matrixCurrent = [...matrix];
 
   const first = [0, 1, 2];
@@ -13,7 +10,6 @@ module.exports = function solveSudoku(matrix) {
   let unsolved = [];
 
   //console.log(matrixOrigin);
-
 
   function createUnsolved(i, j) {
     if (matrixCurrent[i][j] == 0) {
@@ -24,10 +20,6 @@ module.exports = function solveSudoku(matrix) {
       obj.sector = generateSector(i, j);
       unsolved.push(obj)
     }
-  }
-//console.log(unsolved);
-  function findCurrent(x, y) {
-    return unsolved.find(el => el.x == x && el.y == y)
   }
 
   function setColumn(y) {
@@ -45,18 +37,24 @@ module.exports = function solveSudoku(matrix) {
         case 0:
         case 1:
         case 2:
+
+          sector.id = sector.id ? sector.id + 1 : 1;
           sector[place] = first
           break;
 
         case 3:
         case 4:
         case 5:
+
+          sector.id = sector.id ? sector.id + 2 : 2;
           sector[place] = second
           break;
 
         case 6:
         case 7:
         case 8:
+
+          sector.id = sector.id ? sector.id + 3 : 3;
           sector[place] = third
           break;
 
@@ -85,44 +83,20 @@ module.exports = function solveSudoku(matrix) {
     }
   }
 
-  function getUniquesFromArrays(array){
-    if(array.length){
-      return array.reduce((accumulator, element)=>{
-      accumulator = accumulator.concat(element.filter(number => !accumulator.includes(number)));
-      return accumulator
-    })};
+  function getUniquesFromArrays(array) {
+    if (array.length) {
+      return array.reduce((accumulator, element) => {
+        accumulator = accumulator.concat(element.filter(number => !accumulator.includes(number)));
+        return accumulator
+      })
+    };
   };
 
-  function checkIfSolved (array, x, y){
+  function checkIfSolved(array, x, y) {
     if (array.length === 1) {
-      //console.log(`Solved ${x} ${y}! answer is ${array[0]}`)
       matrixCurrent[x][y] = array[0];
       return false
     } else return true
-  }
-
-  function compareArrays (array) {
-    if (!array) {
-      return false;
-    }
-    if (this.length !== array.length) {
-      return false;
-    }
-    for (var i = 0, l = this.length; i < l; i++) {
-      if (this[i] instanceof Array && array[i] instanceof Array) {
-        if (!this[i].compare(array[i])) {
-          return false;
-        }
-      }
-      else if (this[i] !== array[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  function isEffective (params) {
-    
   }
 
   function singles(current) {
@@ -136,12 +110,11 @@ module.exports = function solveSudoku(matrix) {
         sectorValues.push(matrixCurrent[i][j])
       }
     }
-    iterateSector(current.sector, pushValues);    
+
+    iterateSector(current.sector, pushValues);
     current.possibles = current.possibles.filter(number => !row.includes(number) && !col.includes(number) && !sectorValues.includes(number));
-    //console.log(`result`)
-    //console.log(current.possibles);
     return checkIfSolved(current.possibles, x, y)
-    
+
   }
 
   function hiddenSingles(current) {
@@ -151,28 +124,95 @@ module.exports = function solveSudoku(matrix) {
     let rowPossibles = rowUnsolved.map(element => element.possibles);
     let colUnsolved = unsolved.filter(element => element.y === y && element.x != x);
     let colPossibles = colUnsolved.map(element => element.possibles);
-    let sectorUnsolved = [];
-    let pushUnsolved = () => {
-      if (i != x || j != y) {
-        let match = unsolved.find(element => element.x === i && element.y === j)
-        if (match) {
-          sectorUnsolved.push(match)
-        }
-      }
-    }
-    iterateSector(current.sector, pushUnsolved);
+    let sectorUnsolved = unsolved.filter(element => element.sector.id === current.sector.id && (i != x || j != y));
+
     let sectorPossibles = sectorUnsolved.map(element => element.possibles);
-    //console.log(`rowPos`, rowPossibles );
-    //console.log(`colPos`, colPossibles );
-    //console.log(`secPos`, sectorPossibles );
-    rowHidden = getUniquesFromArrays(rowPossibles);
-    colHidden = getUniquesFromArrays(colPossibles);
-    sectorHidden = getUniquesFromArrays(sectorPossibles);
+
+    if (rowPossibles.length) {
+      rowHidden = getUniquesFromArrays(rowPossibles);
+    } else rowHidden = [];
+    if (colPossibles.length) {
+      colHidden = getUniquesFromArrays(colPossibles)
+    } else colHidden = [];
+    if (sectorPossibles) {
+      sectorHidden = getUniquesFromArrays(sectorPossibles)
+    } else sectorHidden = [];
 
     hidden = current.possibles.filter(number => !rowHidden.includes(number) && !colHidden.includes(number) && !sectorHidden.includes(number));
-    //console.log(`hidden`, hidden);
+
     return checkIfSolved(hidden, x, y);
   }
+
+
+  function blockedCandidate(sectorID) {
+    let sectorUnsolved = unsolved.filter(element => element.sector.id === sectorID);
+    let otherUnsolved = unsolved.filter(element => element.sector.id != sectorID);
+
+    let candidates = {};
+    let coordinates = {};
+    let blocked = {}
+    let sectorPossibles = sectorUnsolved.reduce((acc, element) => {
+      acc = acc.concat(element.possibles)
+      return acc
+    }, []);
+
+    let sortedPossibles = {}
+    sectorPossibles.forEach(number => {
+      sortedPossibles[number] = sortedPossibles[number] ? sortedPossibles[number] + 1 : 1;
+    });
+
+    let possibleCandidates = Object.keys(sortedPossibles).filter(element => sortedPossibles[element] > 1)
+
+    possibleCandidates.forEach(possible => {
+
+      candidates[possible] = sectorUnsolved.filter(element => {
+
+        return element.possibles.includes(Number(possible))
+      });
+    });
+    possibleCandidates.forEach(possible => {
+      coordinates[possible] = {};
+      coordinates[possible].x = [];
+      coordinates[possible].y = [];
+      blocked[possible] = {};
+
+      candidates[possible].forEach(candidate => {
+        coordinates[possible].x.push(candidate.x);
+        coordinates[possible].y.push(candidate.y);
+      })
+    });
+    possibleCandidates.forEach(possible => {
+      blocked[possible].x = coordinates[possible].x.reduce((accumulator, x) => accumulator == x ? accumulator : false);
+      blocked[possible].y = coordinates[possible].y.reduce((accumulator, y) => accumulator == y ? accumulator : false);
+    });
+
+    let blockedFound = Object.keys(blocked).reduce((acc, key) => {
+      if (blocked[key].x || blocked[key].y) {
+        acc.push(Number(key));
+      }
+      return acc
+    }, [])
+
+    function deleteBlocked(blocked, coordinate) {
+      let place = coordinates[blocked][coordinate][0];
+      let lineBlocked = otherUnsolved.filter(element => element[coordinate] == place);
+      lineBlocked.forEach(element => {
+        toDeletionI = element.possibles.indexOf(blocked);
+        if (toDeletionI >= 0) {
+          element.possibles.splice(toDeletionI, 1)
+        }
+      });
+    };
+    if (blockedFound.length) {
+
+      blockedFound.forEach(blocked => {
+        if (coordinates[blocked].x) {
+          deleteBlocked(blocked, 'x');
+        } else deleteBlocked(blocked, 'y');
+      });
+    }
+  }
+
 
 
   /* -----------main section-------------- */
@@ -182,58 +222,48 @@ module.exports = function solveSudoku(matrix) {
   let tried = 0;
   let f = 0;
 
+
   while (unsolved.length) {
-    //console.log(`new iteration!`)
     let unsolvedStart = JSON.stringify(unsolved);
-    //console.log (unsolvedStart.length);
-    
+
     tried++;
-    //console.log(`iteration ${tried}`);
     unsolved = unsolved.filter(element => singles(element));
     if (unsolved.length) {
-     // console.log(`start hiddensingles at i ${tried}`);
+
       unsolved = unsolved.filter(element => hiddenSingles(element));
-      let test = JSON.stringify(unsolved)
-      //console.log(test.length);
-      }else return matrixCurrent;
-    
-    if (unsolved.length){
-      //console.log(`ended both and not solved at ${tried}`);
+    } else return matrixCurrent;
+
+    if (unsolved.length) {
+      for (let i = 2; i < 7; i++) {
+        blockedCandidate(i);
+      }
+    } else return matrixCurrent;
+
+
+
+    if (unsolved.length) {
       let unsolvedEnd = JSON.stringify(unsolved);
-        if(unsolvedStart==unsolvedEnd){
-          f++
-          if(f>5){
-          return console.log (`Nothing changed. Algorythms are insufficient or sudoku has no solvation `);
-          }
+      if (unsolvedStart == unsolvedEnd) {
+        f++
+        if (f > 5) {
+          return console.log(`Nothing changed. Algorythms are insufficient or sudoku has no solvation `);
         }
-    } else return matrixCurrent;   
+      }
+    } else return matrixCurrent;
 
   }
-  /*
-  let test = {
-    x: 0,
-    y: 8,
-    possibles: [1, 2, 3, 4, 5, 6, 7, 8, 9],
-    sector: generateSector(0, 8)
-  }
-  unsolved = unsolved.filter(element => singles(element));
-  unsolved = unsolved.filter(element => hiddenSingles(element));
-  unsolved = unsolved.filter(element => singles(element));
-  unsolved = unsolved.filter(element => hiddenSingles(element));
-  //hiddenSingles(test);
-*/
-  //console.log(matrixCurrent);
+
 }
 /*
 solveSudoku([
-  [6, 5, 0, 7, 3, 0, 0, 8, 0],
-  [0, 0, 0, 4, 8, 0, 5, 3, 0],
-  [8, 4, 0, 9, 2, 5, 0, 0, 0],
-  [0, 9, 0, 8, 0, 0, 0, 0, 0],
-  [5, 3, 0, 2, 0, 9, 6, 0, 0],
-  [0, 0, 6, 0, 0, 0, 8, 0, 0],
-  [0, 0, 9, 0, 0, 0, 0, 0, 6],
-  [0, 0, 7, 0, 0, 0, 0, 5, 0],
-  [1, 6, 5, 3, 9, 0, 4, 7, 0]
+  [0, 5, 0, 0, 7, 0, 0, 0, 1],
+  [8, 7, 6, 0, 2, 1, 9, 0, 3],
+  [0, 0, 0, 0, 3, 5, 0, 0, 0],
+  [0, 0, 0, 0, 4, 3, 6, 1, 0],
+  [0, 4, 0, 0, 0, 9, 0, 0, 2],
+  [0, 1, 2, 0, 5, 0, 0, 0, 4],
+  [0, 8, 9, 0, 6, 4, 0, 0, 0],
+  [0, 0, 0, 0, 0, 7, 0, 0, 0],
+  [1, 6, 7, 0, 0, 2, 5, 4, 0]
 ]);
 */
